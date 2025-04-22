@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import './App.css';
+import logo from './images/logo.png';
 
 function App() {
   const [page, setPage] = useState(1);
@@ -19,6 +20,7 @@ function App() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(false);
 
   const mapRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -195,12 +197,25 @@ function App() {
   const labelPickup = moveType === "Store Pickup" ? "Store Address" : "Pickup Address";
   const labelDropoff = moveType === "Home to Storage Unit" ? "Storage Unit Location" : (moveType === "In-House Move" || moveType === "Junk Removal" ? "Address" : "Dropoff Address");
 
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  const formatTime = (timeString) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
   return (
     <div className="app-container">
       {page === 1 && (
         <div className="content-wrapper">
           <div className="header">
-            <img src="/images/logo.png" alt="PikUp Logo" className="logo" />
+            <img src={logo} alt="PikUp Logo" className="logo" />
             <h1 className="title">PikUp</h1>
             <p className="subtitle">The easiest way to move your stuff. Affordable. Reliable. Fast.</p>
           </div>
@@ -308,7 +323,8 @@ function App() {
         <div className="content-wrapper">
           <h1 className="title">Item Info</h1>
           <p className="subtitle">Would you like to upload photos or manually enter your items?</p>
-
+          <p className="manual-entry-note">(manually entered items will get an immediate quote)</p>
+          
           <div className="button-group">
             <button 
               onClick={() => { setUsePhotos(true); }} 
@@ -406,6 +422,76 @@ function App() {
               {response?.error && <p className="error">{response.error}</p>}
               {response?.type === "manual" && <h2 className="title">Your estimated price: ${response.data?.estimated_price?.toFixed(2)}</h2>}
               {response?.type === "photos" && <h2 className="title">Thank you! We'll get back to you within 24 hours with a quote.</h2>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {response && (
+        <div className="final-page">
+          <div className="quote-header">
+            <h2>Quote Summary</h2>
+            {response.type === "manual" && response.data && response.data.price && (
+              <div className="price-display">
+                <span className="price-label">Estimated Price:</span>
+                <span className="price-amount">${response.data.price.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="submission-details">
+            <h3>Your Move Details</h3>
+            <div className="details-grid">
+              <div className="detail-item">
+                <span className="detail-label">Name:</span>
+                <span className="detail-value">{name}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Email:</span>
+                <span className="detail-value">{email}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Phone:</span>
+                <span className="detail-value">{phone}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Move Type:</span>
+                <span className="detail-value">{moveType}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Pickup Address:</span>
+                <span className="detail-value">{pickupAddress}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Destination Address:</span>
+                <span className="detail-value">{destinationAddress}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Scheduled Date:</span>
+                <span className="detail-value">{formatDate(scheduledDate)}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Scheduled Time:</span>
+                <span className="detail-value">{formatTime(scheduledTime)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="payment-notice">
+            <p>Please note: Payment will be collected in person at the time of service.</p>
+          </div>
+
+          {!isConfirmed ? (
+            <button 
+              className="confirm-button"
+              onClick={() => setIsConfirmed(true)}
+            >
+              Confirm Submission
+            </button>
+          ) : (
+            <div className="confirmation-message">
+              <h3>Thank you for your submission!</h3>
+              <p>We'll send you an email shortly to confirm your move details.</p>
             </div>
           )}
         </div>

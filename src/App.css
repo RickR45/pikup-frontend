@@ -181,3 +181,141 @@
     transform: rotate(360deg);
   }
 }
+
+.manual-entry-note {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 5px;
+}
+
+.final-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 30px;
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  color: #ffffff;
+}
+
+.quote-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.quote-header h2 {
+  color: #ffffff;
+  margin-bottom: 15px;
+  font-size: 28px;
+}
+
+.price-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.price-label {
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.price-amount {
+  font-size: 32px;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.submission-details {
+  background-color: #2a2a2a;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+}
+
+.submission-details h3 {
+  color: #ffffff;
+  margin-bottom: 20px;
+  font-size: 22px;
+  text-align: center;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.detail-label {
+  color: #888;
+  font-size: 14px;
+}
+
+.detail-value {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.payment-notice {
+  background-color: #2a2a2a;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.payment-notice p {
+  color: #ffffff;
+  margin: 0;
+  font-size: 16px;
+}
+
+.confirm-button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  display: block;
+  transition: background-color 0.3s ease;
+}
+
+.confirm-button:hover {
+  background-color: #45a049;
+}
+
+.confirmation-message {
+  text-align: center;
+  padding: 30px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.confirmation-message h3 {
+  color: #4CAF50;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.confirmation-message p {
+  color: #ffffff;
+  font-size: 16px;
+  margin: 0;
+}
