@@ -1,0 +1,183 @@
+.app-container {
+  background-color: #111;
+  color: white;
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+}
+
+.content-wrapper {
+  max-width: 800px;
+  margin: auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  width: 150px;
+  height: auto;
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.title {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+  background-color: #333;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 8px;
+}
+
+.button {
+  width: 100%;
+  background-color: #e67e22;
+  border: none;
+  padding: 1rem;
+  color: white;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  cursor: grab;
+  transition: all 0.3s ease;
+}
+
+.button:hover {
+  background-color: #d35400;
+  transform: translateY(-2px);
+}
+
+.button.disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.button.disabled:hover {
+  transform: none;
+}
+
+.map {
+  height: 300px;
+  width: 100%;
+  margin-top: 1rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.photo-upload-section {
+  margin-top: 2rem;
+}
+
+.file-input {
+  width: 100%;
+  padding: 1rem;
+  background-color: #333;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.photo-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.remove-photo {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.items-section {
+  margin-top: 2rem;
+}
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.error {
+  color: red;
+  font-size: 1.2rem;
+}
+
+.centered {
+  text-align: center;
+  margin-top: 5rem;
+}
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-left-color: #e67e22;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 2rem auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

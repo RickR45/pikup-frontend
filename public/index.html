@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="PikUp - On-Demand Move Estimator and Booking" />
+    <title>PikUp Move Estimator</title>
+
+    <!-- ✅ Google Maps JS API with Places -->
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCMeu5AA1lG1Ty3NPrUz9W6G91-T0ruYN8&libraries=places"
+      async
+      defer
+    ></script>
+
+    <!-- ✅ Load Google Extended Component Library (non-module fallback to avoid CORS) -->
+    <script src="https://cdn.jsdelivr.net/npm/@googlemaps/extended-component-library@0.6.13/dist/index.umd.js"></script>
+
+    <!-- ✅ Listen to <gmpx-placeautocomplete> selection -->
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const el = document.querySelector("gmpx-placeautocomplete");
+        if (el) {
+          el.addEventListener("gmpx-placeautocomplete:place", (event) => {
+            const place = event.detail;
+            const formatted = place?.formatted_address || place?.name || "";
+            window.dispatchEvent(
+              new CustomEvent("addressSelected", { detail: formatted })
+            );
+          });
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
