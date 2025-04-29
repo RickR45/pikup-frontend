@@ -2,6 +2,9 @@
   "name": "pikup-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@types/node": "16.18.80",
     "@types/react": "18.2.55",
