@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import './MoveForm.css';
 import MapComponent from './MapComponent';
 import ItemSelector from './ItemSelector';
-import { ItemDimension } from './itemConfig';
+import { ItemDimension as ConfigItemDimension } from './itemConfig';
 import LoadingSkeleton from './LoadingSkeleton';
 import ToastNotification from './ToastNotification';
 import FormProgress from './FormProgress';
@@ -39,6 +39,22 @@ interface FormErrors {
   general?: string;
 }
 
+interface LocalItemDimension {
+  length: number;
+  width: number;
+  height: number;
+  weight?: number;
+}
+
+interface Item {
+  name: string;
+  dimensions: LocalItemDimension;
+}
+
+interface ItemSelectorProps {
+  onItemAdd: (item: Item) => void;
+}
+
 const initialFormState: FormData = {
   name: '',
   email: '',
@@ -73,6 +89,7 @@ const MoveForm: React.FC = () => {
     type: 'success' | 'error' | 'info';
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadedPhotos, setUploadedPhotos] = useState<File[]>([]);
 
   const handlePickupCoordinatesChange = useCallback((lat: number, lng: number) => {
     setFormDataState(prev => ({
@@ -86,6 +103,17 @@ const MoveForm: React.FC = () => {
     // Store destination coordinates if needed in the future
     console.log('Destination coordinates:', { lat, lng });
   }, []);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newPhotos = Array.from(e.target.files);
+      setUploadedPhotos(prev => [...prev, ...newPhotos]);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setUploadedPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -271,7 +299,53 @@ const MoveForm: React.FC = () => {
         return (
           <div className="items-section">
             <h3>Add Items to Move</h3>
-            <ItemSelector onItemAdd={handleItemAdd} />
+            <p className="subtitle">Would you like to upload photos or manually enter your items?</p>
+            <p className="manual-entry-note">(manually entered items will get an immediate quote)</p>
+            
+            <div className="button-group">
+              <button 
+                onClick={() => setFormDataState({...formDataState, usePhotos: true})} 
+                className={`button ${formDataState.usePhotos ? 'active' : ''}`}
+              >
+                Upload Photos
+              </button>
+              <button 
+                onClick={() => setFormDataState({...formDataState, usePhotos: false})} 
+                className={`button ${!formDataState.usePhotos ? 'active' : ''}`}
+              >
+                Enter Items
+              </button>
+            </div>
+
+            {formDataState.usePhotos ? (
+              <div className="photo-upload-section">
+                <input 
+                  type="file" 
+                  multiple 
+                  accept="image/*" 
+                  onChange={handlePhotoUpload}
+                  className="file-input"
+                />
+                <div className="photo-grid">
+                  {uploadedPhotos.map((photo, index) => (
+                    <div key={index} className="photo-item">
+                      <img 
+                        src={URL.createObjectURL(photo)} 
+                        alt="upload" 
+                      />
+                      <button 
+                        onClick={() => removePhoto(index)}
+                        className="remove-photo"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="manual-items-section">
+                <ItemSelector onItemAdd={handleItemAdd} />
             
             {formDataState.items.length > 0 && (
               <div className="items-list">
@@ -281,10 +355,6 @@ const MoveForm: React.FC = () => {
                   <div key={index} className="item-entry">
                     <div className="item-details">
                       <span className="item-name">{item.item_name}</span>
-                      <span className="item-dimensions">
-                        {item.length}" × {item.width}" × {item.height}"
-                        {item.weight && ` • ${item.weight} lbs`}
-                      </span>
                     </div>
                     <button
                       type="button"
@@ -298,6 +368,8 @@ const MoveForm: React.FC = () => {
                     </button>
                   </div>
                 ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -329,8 +401,7 @@ const MoveForm: React.FC = () => {
                 <div className="review-items">
                   {formDataState.items.map((item, index) => (
                     <p key={index}>
-                      {item.item_name} - {item.length}" × {item.width}" × {item.height}"
-                      {item.weight && ` • ${item.weight} lbs`}
+                      {item.item_name}
                     </p>
                   ))}
                 </div>
@@ -487,7 +558,16 @@ const MoveForm: React.FC = () => {
   };
 
   const calculateEstimatedPrice = (formData: any) => {
-    const PRICING_CONFIG = {
+    const PRICING_CONFIG: Record<string, {
+      base: number;
+      per_mile: number;
+      per_ft3: number;
+      per_item: number;
+      max_miles?: number;
+      max_volume: number;
+      max_dimension: number;
+      per_weight?: number;
+    }> = {
       "Home to Home": { 
         base: 100, 
         per_mile: 3, 
@@ -495,7 +575,7 @@ const MoveForm: React.FC = () => {
         per_item: 5,
         max_miles: 80,
         max_volume: 160,
-        max_dimension: 8 * 12 // 8 feet in inches
+        max_dimension: 8 * 12
       },
       "In-House Move": { 
         base: 40, 
@@ -514,7 +594,7 @@ const MoveForm: React.FC = () => {
         max_volume: 160,
         max_dimension: 8 * 12
       },
-      "Home to Storage": {  // Added this type
+      "Home to Storage": { 
         base: 100, 
         per_mile: 3, 
         per_ft3: 0.5, 
@@ -528,7 +608,7 @@ const MoveForm: React.FC = () => {
         per_mile: 0, 
         per_ft3: 0, 
         per_item: 5,
-        per_weight: 0.1, // $1 per 10 lbs
+        per_weight: 0.1,
         max_volume: 160,
         max_dimension: 8 * 12
       }
@@ -584,17 +664,17 @@ const MoveForm: React.FC = () => {
     return price;
   };
 
-  const handleItemAdd = (itemName: string, dimensions: ItemDimension) => {
+  const handleItemAdd = (item: Item) => {
     setFormDataState(prev => ({
       ...prev,
       items: [
         ...prev.items,
         {
-          item_name: itemName,
-          length: dimensions.length,
-          width: dimensions.width,
-          height: dimensions.height,
-          weight: dimensions.weight
+          item_name: item.name,
+          length: item.dimensions.length,
+          width: item.dimensions.width,
+          height: item.dimensions.height,
+          weight: item.dimensions.weight
         }
       ]
     }));

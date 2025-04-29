@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import './App.css';
 import logo from './images/logo.png';
+import ItemSelector from './ItemSelector.tsx';
+import { itemCategories, ItemDimension } from './itemConfig.ts';
 
 function App() {
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState([{ item_name: "", length: "", width: "", height: "", use_ai: false }]);
+  const [items, setItems] = useState([]);
   const [moveType, setMoveType] = useState("Home to Home");
   const [pickupAddress, setPickupAddress] = useState("");
   const [currentLat, setCurrentLat] = useState("");
@@ -17,8 +19,37 @@ function App() {
   const [destinationAddress, setDestinationAddress] = useState("");
   const [usePhotos, setUsePhotos] = useState(false);
   const [uploadedPhotos, setUploadedPhotos] = useState([]);
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
+  const [additionalInfo, setAdditionalInfo] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    
+    // Round up to next 15-minute increment
+    minutes = Math.ceil(minutes / 15) * 15;
+    if (minutes === 60) {
+      minutes = 0;
+      hours++;
+    }
+    
+    // If after 8 PM, set to 8 AM next day
+    if (hours >= 20) {
+      hours = 8;
+      minutes = 0;
+    }
+    // If before 8 AM, set to 8 AM
+    else if (hours < 8) {
+      hours = 8;
+      minutes = 0;
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  });
   const [loading, setLoading] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
@@ -62,25 +93,56 @@ function App() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (window.google && window.google.maps) {
-        if (autocompleteRef.current) {
-          const autocomplete = new window.google.maps.places.Autocomplete(
-            autocompleteRef.current,
-            { fields: ["formatted_address", "geometry"], types: ["geocode", "establishment"] }
-          );
-          autocomplete.addListener("place_changed", () => {
-            const place = autocomplete.getPlace();
-            setDestinationAddress(place.formatted_address || "");
-          });
-        }
+        // Create map instance
+        const map = new window.google.maps.Map(mapRef.current, {
+          center: { lat: currentLat || 37.7749, lng: currentLng || -122.4194 },
+          zoom: 14
+        });
 
+        // Function to handle place selection
+        const handlePlaceSelect = (place, inputField, setAddress) => {
+          if (place.geometry) {
+            setAddress(place.formatted_address || "");
+            
+            // Update map
+            map.setCenter(place.geometry.location);
+            map.setZoom(15);
+            
+            // Add marker
+            new window.google.maps.Marker({
+              position: place.geometry.location,
+              map: map
+            });
+          }
+        };
+
+        // Setup autocomplete for pickup address
         if (pickupAutocompleteRef.current) {
           const pickupAutocomplete = new window.google.maps.places.Autocomplete(
             pickupAutocompleteRef.current,
-            { fields: ["formatted_address"], types: ["geocode", "establishment"] }
+            { 
+              fields: ["formatted_address", "geometry"],
+              types: ["address"]
+            }
           );
           pickupAutocomplete.addListener("place_changed", () => {
             const place = pickupAutocomplete.getPlace();
-            setPickupAddress(place.formatted_address || "");
+            handlePlaceSelect(place, pickupAutocompleteRef.current, setPickupAddress);
+          });
+        }
+
+        // Setup autocomplete for destination address
+        if (autocompleteRef.current) {
+          const destinationAutocomplete = new window.google.maps.places.Autocomplete(
+            autocompleteRef.current,
+            { 
+              fields: ["formatted_address", "geometry"],
+              types: ["address"]
+            }
+          );
+          destinationAutocomplete.addListener("place_changed", () => {
+            const place = destinationAutocomplete.getPlace();
+            handlePlaceSelect(place, autocompleteRef.current, setDestinationAddress);
           });
         }
 
@@ -89,7 +151,38 @@ function App() {
     }, 200);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentLat, currentLng, moveType]);
+
+  // Update map when move type changes
+  useEffect(() => {
+    if (window.google && window.google.maps && mapRef.current) {
+      const map = new window.google.maps.Map(mapRef.current, {
+        center: { lat: currentLat || 37.7749, lng: currentLng || -122.4194 },
+        zoom: 14
+      });
+
+      // Add marker for current location
+      if (currentLat && currentLng) {
+        new window.google.maps.Marker({
+          position: { lat: currentLat, lng: currentLng },
+          map: map
+        });
+      }
+    }
+  }, [moveType, currentLat, currentLng]);
+
+  // Style for address inputs
+  const addressInputStyle = {
+    backgroundColor: '#333',
+    color: 'white',
+    border: '1px solid #444',
+    borderRadius: '0.25rem',
+    padding: '0.75rem',
+    width: '100%',
+    height: '3.5rem',
+    fontSize: '1rem',
+    lineHeight: '2rem'
+  };
 
   const fetchPickupAddress = async (lat, lng) => {
     try {
@@ -128,18 +221,32 @@ function App() {
     setUploadedPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const validatePage1 = () => {
-    return name && isValidEmail(email) && isValidPhone(phone) && 
-           destinationAddress && scheduledDate && scheduledTime &&
-           (moveType === "In-House Move" || moveType === "Junk Removal" || pickupAddress);
+  const checkValidationPage1 = () => {
+    const errors = {};
+    if (!name) errors.name = true;
+    if (!email || !isValidEmail(email)) errors.email = true;
+    if (!phone || !isValidPhone(phone)) errors.phone = true;
+    if (!destinationAddress) errors.destinationAddress = true;
+    if (!scheduledDate) errors.scheduledDate = true;
+    if (!scheduledTime) errors.scheduledTime = true;
+    if (moveType !== "In-House Move" && moveType !== "Junk Removal" && !pickupAddress) {
+      errors.pickupAddress = true;
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const validatePage2 = () => {
-    if (usePhotos) {
-      return uploadedPhotos.length > 0;
-    } else {
-      return items.every(item => item.item_name && item.length && item.width && item.height);
+  const checkValidationPage2 = () => {
+    const errors = {};
+    if (usePhotos && uploadedPhotos.length === 0) {
+      errors.photos = true;
+    } else if (!usePhotos && items.length === 0) {
+      errors.items = true;
     }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const submitForm = async () => {
@@ -155,6 +262,17 @@ function App() {
     if (moveType === "In-House Move") distOverride = 0;
     if (moveType === "Junk Removal") distOverride = 5;
 
+    // Create an array of items where each item is repeated based on its quantity
+    const expandedItems = items.flatMap(item => 
+      Array(item.quantity).fill({
+        item_name: item.item_name,
+        length: parseFloat(item.length),
+        width: parseFloat(item.width),
+        height: parseFloat(item.height),
+        weight: item.weight ? parseFloat(item.weight) : null
+      })
+    );
+
     const formPayload = {
       name,
       email,
@@ -168,12 +286,8 @@ function App() {
       scheduled_time: scheduledTime,
       mileage_override: distOverride,
       use_photos: usePhotos,
-      items: usePhotos ? [] : items.map(item => ({
-        ...item,
-        length: parseFloat(item.length),
-        width: parseFloat(item.width),
-        height: parseFloat(item.height)
-      }))
+      additional_info: additionalInfo,
+      items: usePhotos ? [] : expandedItems
     };
 
     const formData = new FormData();
@@ -212,6 +326,43 @@ function App() {
 
   return (
     <div className="app-container">
+      <div className="navigation-bar">
+        <div className="nav-item" onClick={() => {
+          if (isConfirmed) {
+            setPage(1);
+          }
+        }}>
+          <span className={`nav-number ${page === 1 ? 'active' : ''}`}>1</span>
+          <span className="nav-label">Contact Info</span>
+        </div>
+        <div 
+          className={`nav-item ${page < 2 ? 'disabled' : ''}`} 
+          onClick={() => {
+            if (isConfirmed) {
+              setPage(2);
+            } else if (checkValidationPage1()) {
+              setPage(2);
+            }
+          }}
+        >
+          <span className={`nav-number ${page === 2 ? 'active' : ''}`}>2</span>
+          <span className="nav-label">Items</span>
+        </div>
+        <div 
+          className={`nav-item ${page < 3 ? 'disabled' : ''}`} 
+          onClick={() => {
+            if (isConfirmed) {
+              setPage(3);
+            } else if (checkValidationPage1() && checkValidationPage2()) {
+              setPage(3);
+            }
+          }}
+        >
+          <span className={`nav-number ${page === 3 ? 'active' : ''}`}>3</span>
+          <span className="nav-label">Review</span>
+        </div>
+      </div>
+
       {page === 1 && (
         <div className="content-wrapper">
           <div className="header">
@@ -226,6 +377,7 @@ function App() {
               value={name} 
               onChange={e => setName(e.target.value)} 
               placeholder="John Doe" 
+              className={validationErrors.name ? 'error' : ''}
               required 
             />
           </div>
@@ -236,6 +388,7 @@ function App() {
               value={email} 
               onChange={e => setEmail(e.target.value)} 
               placeholder="example@email.com" 
+              className={validationErrors.email ? 'error' : ''}
               required 
             />
           </div>
@@ -246,6 +399,7 @@ function App() {
               value={phone} 
               onChange={e => setPhone(e.target.value)} 
               placeholder="(123) 456-7890" 
+              className={validationErrors.phone ? 'error' : ''}
               required 
             />
           </div>
@@ -255,6 +409,7 @@ function App() {
             <select 
               value={moveType} 
               onChange={e => setMoveType(e.target.value)}
+              className={validationErrors.moveType ? 'error' : ''}
             >
               <option>Home to Home</option>
               <option>Home to Storage Unit</option>
@@ -271,6 +426,9 @@ function App() {
                 ref={pickupAutocompleteRef}
                 value={pickupAddress}
                 onChange={e => setPickupAddress(e.target.value)}
+                className={validationErrors.pickupAddress ? 'error' : ''}
+                placeholder="Enter pickup address"
+                style={addressInputStyle}
                 required
               />
             </div>
@@ -283,6 +441,8 @@ function App() {
               value={destinationAddress}
               onChange={e => setDestinationAddress(e.target.value)}
               placeholder="Enter destination address"
+              className={validationErrors.destinationAddress ? 'error' : ''}
+              style={addressInputStyle}
               required
             />
           </div>
@@ -292,7 +452,9 @@ function App() {
             <input 
               type="date" 
               value={scheduledDate} 
-              onChange={e => setScheduledDate(e.target.value)} 
+              onChange={e => setScheduledDate(e.target.value)}
+              className={validationErrors.scheduledDate ? 'error' : ''}
+              min={new Date().toISOString().split('T')[0]}
               required 
             />
           </div>
@@ -302,7 +464,8 @@ function App() {
             <input 
               type="time" 
               value={scheduledTime} 
-              onChange={e => setScheduledTime(e.target.value)} 
+              onChange={e => setScheduledTime(e.target.value)}
+              className={validationErrors.scheduledTime ? 'error' : ''}
               required 
             />
           </div>
@@ -310,9 +473,12 @@ function App() {
           <div id="map" ref={mapRef} className="map" />
 
           <button 
-            onClick={() => validatePage1() && setPage(2)} 
-            className={`button ${!validatePage1() ? 'disabled' : ''}`}
-            disabled={!validatePage1()}
+            onClick={() => {
+              if (checkValidationPage1()) {
+                setPage(2);
+              }
+            }} 
+            className="button"
           >
             Next
           </button>
@@ -328,13 +494,13 @@ function App() {
           <div className="button-group">
             <button 
               onClick={() => { setUsePhotos(true); }} 
-              className="button"
+              className={`button ${usePhotos ? 'active' : ''}`}
             >
               Upload Photos
             </button>
             <button 
               onClick={() => { setUsePhotos(false); }} 
-              className="button"
+              className={`button ${!usePhotos ? 'active' : ''}`}
             >
               Enter Items
             </button>
@@ -368,132 +534,165 @@ function App() {
             </div>
           ) : (
             <div className="items-section">
-              {items.map((item, index) => (
-                <div key={index} className="item-row">
-                  <select 
-                    value={item.item_name} 
-                    onChange={e => handleChange(index, "item_name", e.target.value)}
-                  >
-                    <option value="">Select Item Type</option>
-                    {itemTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  <input 
-                    placeholder="Length (in)" 
-                    value={item.length} 
-                    onChange={e => handleChange(index, "length", e.target.value)}
-                  />
-                  <input 
-                    placeholder="Width (in)" 
-                    value={item.width} 
-                    onChange={e => handleChange(index, "width", e.target.value)}
-                  />
-                  <input 
-                    placeholder="Height (in)" 
-                    value={item.height} 
-                    onChange={e => handleChange(index, "height", e.target.value)}
-                  />
+              <ItemSelector onItemAdd={(item) => {
+                setItems(prev => [...prev, {
+                  item_name: item.name,
+                  length: item.dimensions.length,
+                  width: item.dimensions.width,
+                  height: item.dimensions.height,
+                  weight: item.dimensions.weight,
+                  quantity: 1
+                }]);
+              }} />
+              
+              {items.length > 0 && (
+                <div className="items-list">
+                  {items.map((item, index) => (
+                    <div key={index} className="item-entry">
+                      <div className="item-details">
+                        <span className="item-name">{item.item_name}</span>
+                        <div className="quantity-controls">
+                          <button 
+                            onClick={() => {
+                              const newItems = [...items];
+                              if (newItems[index].quantity > 1) {
+                                newItems[index].quantity -= 1;
+                                setItems(newItems);
+                              }
+                            }}
+                            className="quantity-button"
+                          >
+                            -
+                          </button>
+                          <span className="quantity">{item.quantity}</span>
+                          <button 
+                            onClick={() => {
+                              const newItems = [...items];
+                              newItems[index].quantity += 1;
+                              setItems(newItems);
+                            }}
+                            className="quantity-button"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newItems = items.filter((_, i) => i !== index);
+                          setItems(newItems);
+                        }}
+                        className="remove-item-button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <button onClick={addItem} className="button">Add Another Item</button>
+              )}
             </div>
           )}
 
+          <div className="form-group">
+            <label>Additional Information (Optional):</label>
+            <textarea
+              value={additionalInfo}
+              onChange={e => setAdditionalInfo(e.target.value)}
+              placeholder="e.g., Special instructions, fragile items, or any other details we should know"
+              className="additional-info-input"
+            />
+          </div>
+
           <button 
-            onClick={() => { validatePage2() && submitForm(); setPage(3); }}
-            className={`button ${!validatePage2() ? 'disabled' : ''}`}
-            disabled={!validatePage2()}
+            onClick={() => {
+              if (checkValidationPage2()) {
+                setPage(3);
+              }
+            }}
+            className="button"
           >
             Finish
           </button>
         </div>
       )}
 
-      {page === 3 && (
+      {page === 3 && !isConfirmed && (
         <div className="content-wrapper centered">
-          {loading ? (
             <div>
-              <div className="spinner" />
-              <p className="subtitle">Submitting your info...</p>
+            <h2 className="title">Review Your Submission</h2>
+            <div className="submission-details">
+              <h3>Your Move Details</h3>
+              <div className="details-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Name:</span>
+                  <span className="detail-value">{name}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Email:</span>
+                  <span className="detail-value">{email}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Phone:</span>
+                  <span className="detail-value">{phone}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Move Type:</span>
+                  <span className="detail-value">{moveType}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Pickup Address:</span>
+                  <span className="detail-value">{pickupAddress}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Destination Address:</span>
+                  <span className="detail-value">{destinationAddress}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Scheduled Date:</span>
+                  <span className="detail-value">{formatDate(scheduledDate)}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Scheduled Time:</span>
+                  <span className="detail-value">{formatTime(scheduledTime)}</span>
+                </div>
+                {additionalInfo && (
+                  <div className="detail-item">
+                    <span className="detail-label">Additional Information:</span>
+                    <span className="detail-value">{additionalInfo}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <div>
-              {response?.error && <p className="error">{response.error}</p>}
-              {response?.type === "manual" && <h2 className="title">Your estimated price: ${response.data?.estimated_price?.toFixed(2)}</h2>}
-              {response?.type === "photos" && <h2 className="title">Thank you! We'll get back to you within 24 hours with a quote.</h2>}
+
+            <div className="payment-notice">
+              <p>Please note: Payment will be collected in person at the time of service.</p>
             </div>
-          )}
+
+            <button 
+              className="confirm-button"
+              onClick={() => {
+                setIsConfirmed(true);
+                submitForm();
+              }}
+            >
+              Confirm Submission
+            </button>
+          </div>
         </div>
       )}
 
-      {response && (
+      {isConfirmed && (
         <div className="final-page">
-          <div className="quote-header">
-            <h2>Quote Summary</h2>
-            {response.type === "manual" && response.data && response.data.price && (
+          <div className="confirmation-message">
+            <h3>Thank you for your submission!</h3>
+            <p>We'll send you an email shortly to confirm your move details and price.</p>
+            {response?.type === "manual" && response?.data?.price && (
               <div className="price-display">
                 <span className="price-label">Estimated Price:</span>
                 <span className="price-amount">${response.data.price.toFixed(2)}</span>
               </div>
             )}
           </div>
-          
-          <div className="submission-details">
-            <h3>Your Move Details</h3>
-            <div className="details-grid">
-              <div className="detail-item">
-                <span className="detail-label">Name:</span>
-                <span className="detail-value">{name}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Email:</span>
-                <span className="detail-value">{email}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Phone:</span>
-                <span className="detail-value">{phone}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Move Type:</span>
-                <span className="detail-value">{moveType}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Pickup Address:</span>
-                <span className="detail-value">{pickupAddress}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Destination Address:</span>
-                <span className="detail-value">{destinationAddress}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Scheduled Date:</span>
-                <span className="detail-value">{formatDate(scheduledDate)}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Scheduled Time:</span>
-                <span className="detail-value">{formatTime(scheduledTime)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="payment-notice">
-            <p>Please note: Payment will be collected in person at the time of service.</p>
-          </div>
-
-          {!isConfirmed ? (
-            <button 
-              className="confirm-button"
-              onClick={() => setIsConfirmed(true)}
-            >
-              Confirm Submission
-            </button>
-          ) : (
-            <div className="confirmation-message">
-              <h3>Thank you for your submission!</h3>
-              <p>We'll send you an email shortly to confirm your move details.</p>
-            </div>
-          )}
         </div>
       )}
     </div>

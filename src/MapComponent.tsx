@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import './MapComponent.css';
 
 interface MapComponentProps {
@@ -10,8 +10,17 @@ interface MapComponentProps {
 
 declare global {
   interface Window {
-    google: any;
-    initMap: () => void;
+    google: {
+      maps: {
+        Map: new (element: HTMLElement, options?: google.maps.MapOptions) => google.maps.Map;
+        Marker: new (options?: google.maps.MarkerOptions) => google.maps.Marker;
+        Geocoder: new () => google.maps.Geocoder;
+        LatLngBounds: new () => google.maps.LatLngBounds;
+        event: {
+          addListener: (instance: any, eventName: string, handler: Function) => void;
+        };
+      };
+    };
   }
 }
 
@@ -19,119 +28,73 @@ const MapComponent: React.FC<MapComponentProps> = ({
   pickupAddress,
   destinationAddress,
   onPickupCoordinatesChange,
-  onDestinationCoordinatesChange
+  onDestinationCoordinatesChange,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const pickupMarkerRef = useRef<google.maps.Marker | null>(null);
-  const destinationMarkerRef = useRef<google.maps.Marker | null>(null);
-  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
 
   useEffect(() => {
-    // Initialize the map
-    const initMap = () => {
-      if (!mapRef.current) return;
+    if (!window.google || !mapRef.current) return;
 
-      const map = new window.google.maps.Map(mapRef.current, {
-        zoom: 12,
-        center: { lat: 40.7128, lng: -74.0060 }, // Default to NYC
-        mapTypeControl: false,
-        fullscreenControl: false,
-        streetViewControl: false,
-      });
+    const map = new window.google.maps.Map(mapRef.current, {
+      center: { lat: 37.7749, lng: -122.4194 },
+      zoom: 12,
+    });
 
-      mapInstanceRef.current = map;
-      geocoderRef.current = new window.google.maps.Geocoder();
+    mapInstanceRef.current = map;
 
-      // Initialize markers
-      pickupMarkerRef.current = new window.google.maps.Marker({
-        map,
-        icon: {
-          url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-        }
-      });
+    const geocoder = new window.google.maps.Geocoder();
 
-      destinationMarkerRef.current = new window.google.maps.Marker({
-        map,
-        icon: {
-          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-        }
-      });
-    };
-
-    // Load Google Maps script if not already loaded
-    if (!window.google) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initMap;
-      document.head.appendChild(script);
-    } else {
-      initMap();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!geocoderRef.current || !mapInstanceRef.current) return;
-
-    const updateMarkerAndMap = (
+    const updateMarker = (
       address: string,
-      marker: google.maps.Marker | null,
       onCoordinatesChange: (lat: number, lng: number) => void
     ) => {
-      if (!address.trim()) return;
+      if (!address) return;
 
-      geocoderRef.current?.geocode(
-        { address },
-        (results: google.maps.GeocoderResult[], status: google.maps.GeocoderStatus) => {
-          if (status === 'OK' && results[0] && marker) {
-            const location = results[0].geometry.location;
-            marker.setPosition(location);
-            onCoordinatesChange(location.lat(), location.lng());
+      geocoder.geocode({ address }, (results: google.maps.GeocoderResult[], status: string) => {
+        if (status === 'OK' && results[0]) {
+          const location = results[0].geometry.location;
+          const marker = new window.google.maps.Marker({
+            position: location,
+            map: mapInstanceRef.current || undefined,
+          });
+          markersRef.current.push(marker);
+          onCoordinatesChange(location.lat(), location.lng());
 
-            // Adjust map bounds to show both markers
-            if (pickupMarkerRef.current && destinationMarkerRef.current) {
-              const bounds = new window.google.maps.LatLngBounds();
-              if (pickupMarkerRef.current.getPosition()) {
-                bounds.extend(pickupMarkerRef.current.getPosition()!);
-              }
-              if (destinationMarkerRef.current.getPosition()) {
-                bounds.extend(destinationMarkerRef.current.getPosition()!);
-              }
-              mapInstanceRef.current?.fitBounds(bounds);
-            } else {
-              mapInstanceRef.current?.setCenter(location);
+          // Adjust map bounds to show all markers
+          const bounds = new window.google.maps.LatLngBounds();
+          markersRef.current.forEach((marker) => {
+            const position = marker.getPosition();
+            if (position) {
+              bounds.extend(position);
+            }
+          });
+
+          if (markersRef.current.length > 0) {
+            mapInstanceRef.current?.fitBounds(bounds);
+          } else {
+            mapInstanceRef.current?.setCenter(location);
+            if (mapInstanceRef.current) {
+              (mapInstanceRef.current as any).setZoom(15);
             }
           }
         }
-      );
+      });
     };
 
-    // Update markers when addresses change
-    if (pickupAddress) {
-      updateMarkerAndMap(pickupAddress, pickupMarkerRef.current, onPickupCoordinatesChange);
-    }
-    if (destinationAddress) {
-      updateMarkerAndMap(destinationAddress, destinationMarkerRef.current, onDestinationCoordinatesChange);
-    }
+    updateMarker(pickupAddress, onPickupCoordinatesChange);
+    updateMarker(destinationAddress, onDestinationCoordinatesChange);
+
+    return () => {
+      markersRef.current.forEach((marker) => {
+        (marker as any).setMap(null);
+      });
+      markersRef.current = [];
+    };
   }, [pickupAddress, destinationAddress, onPickupCoordinatesChange, onDestinationCoordinatesChange]);
 
-  return (
-    <div className="map-container">
-      <div ref={mapRef} className="map" />
-      <div className="map-legend">
-        <div className="legend-item">
-          <div className="legend-marker pickup" />
-          <span>Pickup Location</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-marker destination" />
-          <span>Destination</span>
-        </div>
-      </div>
-    </div>
-  );
+  return <div ref={mapRef} className="map-container" />;
 };
 
 export default MapComponent; 
