@@ -42,7 +42,7 @@ function App() {
       hours = 8;
       minutes = 0;
     }
-    // If before 8 AM, set to 8 AM
+    // If before 8 AM, set to 8 AM that day
     else if (hours < 8) {
       hours = 8;
       minutes = 0;
