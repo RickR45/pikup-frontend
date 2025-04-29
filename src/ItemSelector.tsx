@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { ItemCategory, ItemVariant, ItemDimension, itemCategories } from './itemConfig';
+import './ItemSelector.css';
 
 interface ItemSelectorProps {
   onItemAdd: (item: ItemVariant, dimensions: ItemDimension) => void;
@@ -18,134 +18,71 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({ onItemAdd }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <View style={styles.buttonContainer}>
+    <div className="item-selector-container">
+      <div className="item-selector-scroll">
+        <div className="item-selector-section">
+          <h3 className="item-selector-title">Categories</h3>
+          <div className="item-selector-button-container">
             {itemCategories.map((category) => (
-              <TouchableOpacity
+              <button
                 key={category.name}
-                style={[
-                  styles.button,
-                  selectedCategory?.name === category.name && styles.selectedButton
-                ]}
-                onPress={() => setSelectedCategory(category)}
+                className={`item-selector-button ${selectedCategory?.name === category.name ? 'selected' : ''}`}
+                onClick={() => setSelectedCategory(category)}
               >
-                <Text style={styles.buttonText}>{category.name}</Text>
-              </TouchableOpacity>
+                {category.name}
+              </button>
             ))}
-          </View>
-        </View>
+          </div>
+        </div>
 
         {selectedCategory && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Items</Text>
-            <View style={styles.buttonContainer}>
+          <div className="item-selector-section">
+            <h3 className="item-selector-title">Items</h3>
+            <div className="item-selector-button-container">
               {selectedCategory.items.map((item) => (
-                <TouchableOpacity
+                <button
                   key={item.name}
-                  style={[
-                    styles.button,
-                    selectedItem?.name === item.name && styles.selectedButton
-                  ]}
-                  onPress={() => setSelectedItem(item)}
+                  className={`item-selector-button ${selectedItem?.name === item.name ? 'selected' : ''}`}
+                  onClick={() => setSelectedItem(item)}
                 >
-                  <Text style={styles.buttonText}>{item.name}</Text>
-                </TouchableOpacity>
+                  {item.name}
+                </button>
               ))}
-            </View>
-          </View>
+            </div>
+          </div>
         )}
 
         {selectedItem && selectedItem.subItems && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sub Items</Text>
-            <View style={styles.buttonContainer}>
+          <div className="item-selector-section">
+            <h3 className="item-selector-title">Sub Items</h3>
+            <div className="item-selector-button-container">
               {selectedItem.subItems.map((subItem) => (
-                <TouchableOpacity
+                <button
                   key={subItem.name}
-                  style={[
-                    styles.button,
-                    styles.selectedButton
-                  ]}
-                  onPress={() => {
+                  className="item-selector-button selected"
+                  onClick={() => {
                     onItemAdd(subItem, subItem.dimensions);
                     setSelectedItem(null);
                   }}
                 >
-                  <Text style={styles.buttonText}>{subItem.name}</Text>
-                </TouchableOpacity>
+                  {subItem.name}
+                </button>
               ))}
-            </View>
-          </View>
+            </div>
+          </div>
         )}
 
         {selectedItem && !selectedItem.subItems && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={handleAddItem}
+          <button
+            className="item-selector-add-button"
+            onClick={handleAddItem}
           >
-            <Text style={styles.addButtonText}>Add Item</Text>
-          </TouchableOpacity>
+            Add Item
+          </button>
         )}
-      </ScrollView>
-    </View>
+      </div>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  button: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  selectedButton: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196f3',
-  },
-  buttonText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  addButton: {
-    padding: 16,
-    borderRadius: 8,
-    backgroundColor: '#2196f3',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-});
 
 export default ItemSelector; 
