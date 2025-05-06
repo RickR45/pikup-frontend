@@ -8,7 +8,7 @@ import { itemCategories, ItemDimension } from './itemConfig.ts';
 function App() {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState([]);
-  const [moveType, setMoveType] = useState("Home to Home");
+  const [moveType, setMoveType] = useState("Select");
   const [pickupAddress, setPickupAddress] = useState("");
   const [currentLat, setCurrentLat] = useState("");
   const [currentLng, setCurrentLng] = useState("");
@@ -23,32 +23,12 @@ function App() {
   const [validationErrors, setValidationErrors] = useState({});
   const [scheduledDate, setScheduledDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    const nextDay = new Date(today);
+    nextDay.setDate(today.getDate() + 1);
+    return nextDay.toISOString().split('T')[0];
   });
   const [scheduledTime, setScheduledTime] = useState(() => {
-    const now = new Date();
-    let hours = now.getHours();
-    let minutes = now.getMinutes();
-    
-    // Round up to next 15-minute increment
-    minutes = Math.ceil(minutes / 15) * 15;
-    if (minutes === 60) {
-      minutes = 0;
-      hours++;
-    }
-    
-    // If after 8 PM, set to 8 AM next day
-    if (hours >= 20) {
-      hours = 8;
-      minutes = 0;
-    }
-    // If before 8 AM, set to 8 AM that day
-    else if (hours < 8) {
-      hours = 8;
-      minutes = 0;
-    }
-    
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    return '08:00';
   });
   const [loading, setLoading] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -173,9 +153,7 @@ function App() {
 
   // Style for address inputs
   const addressInputStyle = {
-    backgroundColor: '#333',
     color: 'white',
-    border: '1px solid #444',
     borderRadius: '0.25rem',
     padding: '0.75rem',
     width: '100%',
@@ -202,6 +180,11 @@ function App() {
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isValidPhone = (phone) => /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/.test(phone);
 
+  // Address validation: at least 5 characters and must contain a number
+  const isValidAddress = (address) => {
+    return typeof address === 'string' && address.length >= 5 && /\d/.test(address);
+  };
+
   const handleChange = (index, field, value) => {
     const updated = [...items];
     updated[index][field] = value;
@@ -226,13 +209,25 @@ function App() {
     if (!name) errors.name = true;
     if (!email || !isValidEmail(email)) errors.email = true;
     if (!phone || !isValidPhone(phone)) errors.phone = true;
-    if (!destinationAddress) errors.destinationAddress = true;
+    if (!destinationAddress || !isValidAddress(destinationAddress)) errors.destinationAddress = true;
     if (!scheduledDate) errors.scheduledDate = true;
     if (!scheduledTime) errors.scheduledTime = true;
-    if (moveType !== "In-House Move" && moveType !== "Junk Removal" && !pickupAddress) {
+    if (moveType === "Select") errors.moveType = true;
+    if (moveType !== "In-House Move" && moveType !== "Junk Removal" && (!pickupAddress || !isValidAddress(pickupAddress))) {
       errors.pickupAddress = true;
     }
-    
+
+    // Date/time validation: must be at least next day at 8:00 AM
+    const now = new Date();
+    const minDate = new Date(now);
+    minDate.setDate(now.getDate() + 1);
+    minDate.setHours(8, 0, 0, 0);
+    const selectedDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+    if (selectedDateTime < minDate) {
+      errors.scheduledDate = true;
+      errors.scheduledTime = true;
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -326,375 +321,397 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="navigation-bar">
-        <div className="nav-item" onClick={() => {
-          if (isConfirmed) {
-            setPage(1);
-          }
-        }}>
-          <span className={`nav-number ${page === 1 ? 'active' : ''}`}>1</span>
-          <span className="nav-label">Contact Info</span>
+      <div className="hero-section">
+        <div className="hero-content">
+          <h1 className="title">PikUp</h1>
+          <p className="subtitle">
+            The easiest way to move your stuff.<br />
+            <span className="subtitle-row">Affordable <span>Reliable</span> <span>Fast</span></span>
+          </p>
         </div>
-        <div 
-          className={`nav-item ${page < 2 ? 'disabled' : ''}`} 
-          onClick={() => {
-            if (isConfirmed) {
-              setPage(2);
-            } else if (checkValidationPage1()) {
-              setPage(2);
-            }
-          }}
-        >
-          <span className={`nav-number ${page === 2 ? 'active' : ''}`}>2</span>
-          <span className="nav-label">Items</span>
-        </div>
-        <div 
-          className={`nav-item ${page < 3 ? 'disabled' : ''}`} 
-          onClick={() => {
-            if (isConfirmed) {
-              setPage(3);
-            } else if (checkValidationPage1() && checkValidationPage2()) {
-              setPage(3);
-            }
-          }}
-        >
-          <span className={`nav-number ${page === 3 ? 'active' : ''}`}>3</span>
-          <span className="nav-label">Review</span>
-        </div>
-      </div>
-
-      {page === 1 && (
-        <div className="content-wrapper">
-          <div className="header">
-            <img src={logo} alt="PikUp Logo" className="logo" />
-            <h1 className="title">PikUp</h1>
-            <p className="subtitle">The easiest way to move your stuff. Affordable. Reliable. Fast.</p>
-          </div>
-
-          <div className="form-group">
-            <label>Full Name:</label>
-            <input 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              placeholder="John Doe" 
-              className={validationErrors.name ? 'error' : ''}
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Email:</label>
-            <input 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              placeholder="example@email.com" 
-              className={validationErrors.email ? 'error' : ''}
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Phone:</label>
-            <input 
-              value={phone} 
-              onChange={e => setPhone(e.target.value)} 
-              placeholder="(123) 456-7890" 
-              className={validationErrors.phone ? 'error' : ''}
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Move Type:</label>
-            <select 
-              value={moveType} 
-              onChange={e => setMoveType(e.target.value)}
-              className={validationErrors.moveType ? 'error' : ''}
-            >
-              <option>Home to Home</option>
-              <option>Home to Storage Unit</option>
-              <option>In-House Move</option>
-              <option>Store Pickup</option>
-              <option>Junk Removal</option>
-            </select>
-          </div>
-
-          {showPickup && (
-            <div className="form-group">
-              <label>{labelPickup}:</label>
-              <input
-                ref={pickupAutocompleteRef}
-                value={pickupAddress}
-                onChange={e => setPickupAddress(e.target.value)}
-                className={validationErrors.pickupAddress ? 'error' : ''}
-                placeholder="Enter pickup address"
-                style={addressInputStyle}
-                required
-              />
+        <div className="background-section"></div>
+        <div className="main-content-bg">
+          <div className="features-section">
+            <div className="feature-item">
+              <span className="feature-icon">⏱️</span>
+              <span className="feature-text">Fast Booking</span>
             </div>
-          )}
-
-          <div className="form-group">
-            <label>{labelDropoff}:</label>
-            <input
-              ref={autocompleteRef}
-              value={destinationAddress}
-              onChange={e => setDestinationAddress(e.target.value)}
-              placeholder="Enter destination address"
-              className={validationErrors.destinationAddress ? 'error' : ''}
-              style={addressInputStyle}
-              required
-            />
+            <div className="feature-item">
+              <span className="feature-icon">🚗</span>
+              <span className="feature-text">Local Movers</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">💰</span>
+              <span className="feature-text">Upfront Pricing</span>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Scheduled Date:</label>
-            <input 
-              type="date" 
-              value={scheduledDate} 
-              onChange={e => setScheduledDate(e.target.value)}
-              className={validationErrors.scheduledDate ? 'error' : ''}
-              min={new Date().toISOString().split('T')[0]}
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Scheduled Time:</label>
-            <input 
-              type="time" 
-              value={scheduledTime} 
-              onChange={e => setScheduledTime(e.target.value)}
-              className={validationErrors.scheduledTime ? 'error' : ''}
-              required 
-            />
-          </div>
-
-          <div id="map" ref={mapRef} className="map" />
-
-          <button 
-            onClick={() => {
-              if (checkValidationPage1()) {
-                setPage(2);
+          <div className="navigation-bar">
+            <div className="nav-item" onClick={() => {
+              if (isConfirmed) {
+                setPage(1);
               }
-            }} 
-            className="button"
-          >
-            Next
-          </button>
-        </div>
-      )}
-
-      {page === 2 && (
-        <div className="content-wrapper">
-          <h1 className="title">Item Info</h1>
-          <p className="subtitle">Would you like to upload photos or manually enter your items?</p>
-          <p className="manual-entry-note">(manually entered items will get an immediate quote)</p>
-          
-          <div className="button-group">
-            <button 
-              onClick={() => { setUsePhotos(true); }} 
-              className={`button ${usePhotos ? 'active' : ''}`}
+            }}>
+              <span className={`nav-number ${page === 1 ? 'active' : ''}`}>1</span>
+              <span className="nav-label">Contact Info</span>
+            </div>
+            <div 
+              className={`nav-item ${page < 2 ? 'disabled' : ''}`} 
+              onClick={() => {
+                if (isConfirmed) {
+                  setPage(2);
+                } else if (checkValidationPage1()) {
+                  setPage(2);
+                }
+              }}
             >
-              Upload Photos
-            </button>
-            <button 
-              onClick={() => { setUsePhotos(false); }} 
-              className={`button ${!usePhotos ? 'active' : ''}`}
+              <span className={`nav-number ${page === 2 ? 'active' : ''}`}>2</span>
+              <span className="nav-label">Items</span>
+            </div>
+            <div 
+              className={`nav-item ${page < 3 ? 'disabled' : ''}`} 
+              onClick={() => {
+                if (isConfirmed) {
+                  setPage(3);
+                } else if (checkValidationPage1() && checkValidationPage2()) {
+                  setPage(3);
+                }
+              }}
             >
-              Enter Items
-            </button>
+              <span className={`nav-number ${page === 3 ? 'active' : ''}`}>3</span>
+              <span className="nav-label">Review</span>
+            </div>
           </div>
 
-          {usePhotos ? (
-            <div className="photo-upload-section">
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                onChange={handlePhotoUpload}
-                className="file-input"
-              />
-              <div className="photo-grid">
-                {uploadedPhotos.map((photo, index) => (
-                  <div key={index} className="photo-item">
-                    <img 
-                      src={URL.createObjectURL(photo)} 
-                      alt="upload" 
-                    />
-                    <button 
-                      onClick={() => removePhoto(index)}
-                      className="remove-photo"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+          {page === 1 && (
+            <div className="content-wrapper">
+              <div className="form-group">
+                <label>Full Name:</label>
+                <input 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  placeholder="John Doe" 
+                  className={validationErrors.name ? 'error' : ''}
+                  required 
+                />
               </div>
-            </div>
-          ) : (
-            <div className="items-section">
-              <ItemSelector onItemAdd={(item) => {
-                setItems(prev => [...prev, {
-                  item_name: item.name,
-                  length: item.dimensions.length,
-                  width: item.dimensions.width,
-                  height: item.dimensions.height,
-                  weight: item.dimensions.weight,
-                  quantity: 1
-                }]);
-              }} />
-              
-              {items.length > 0 && (
-                <div className="items-list">
-                  {items.map((item, index) => (
-                    <div key={index} className="item-entry">
-                      <div className="item-details">
-                        <span className="item-name">{item.item_name}</span>
-                        <div className="quantity-controls">
-                          <button 
-                            onClick={() => {
-                              const newItems = [...items];
-                              if (newItems[index].quantity > 1) {
-                                newItems[index].quantity -= 1;
-                                setItems(newItems);
-                              }
-                            }}
-                            className="quantity-button"
-                          >
-                            -
-                          </button>
-                          <span className="quantity">{item.quantity}</span>
-                          <button 
-                            onClick={() => {
-                              const newItems = [...items];
-                              newItems[index].quantity += 1;
-                              setItems(newItems);
-                            }}
-                            className="quantity-button"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          const newItems = items.filter((_, i) => i !== index);
-                          setItems(newItems);
-                        }}
-                        className="remove-item-button"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+
+              <div className="form-group">
+                <label>Email:</label>
+                <input 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  placeholder="example@email.com" 
+                  className={validationErrors.email ? 'error' : ''}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Phone:</label>
+                <input 
+                  value={phone} 
+                  onChange={e => setPhone(e.target.value)} 
+                  placeholder="(123) 456-7890" 
+                  className={validationErrors.phone ? 'error' : ''}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Move Type:</label>
+                <select 
+                  value={moveType} 
+                  onChange={e => setMoveType(e.target.value)}
+                  className={validationErrors.moveType ? 'error' : ''}
+                >
+                  <option value="Select">Select</option>
+                  <option>Home to Home</option>
+                  <option>Home to Storage Unit</option>
+                  <option>In-House Move</option>
+                  <option>Store Pickup</option>
+                  <option>Junk Removal</option>
+                </select>
+              </div>
+
+              {showPickup && (
+                <div className="form-group">
+                  <label>{labelPickup}:</label>
+                  <input
+                    ref={pickupAutocompleteRef}
+                    value={pickupAddress}
+                    onChange={e => setPickupAddress(e.target.value)}
+                    className={validationErrors.pickupAddress ? 'error' : ''}
+                    placeholder="Enter pickup address"
+                    style={addressInputStyle}
+                    required
+                  />
                 </div>
               )}
+
+              <div className="form-group">
+                <label>{labelDropoff}:</label>
+                <input
+                  ref={autocompleteRef}
+                  value={destinationAddress}
+                  onChange={e => setDestinationAddress(e.target.value)}
+                  placeholder="Enter destination address"
+                  className={validationErrors.destinationAddress ? 'error' : ''}
+                  style={addressInputStyle}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Scheduled Date:</label>
+                <input 
+                  type="date" 
+                  value={scheduledDate} 
+                  onChange={e => setScheduledDate(e.target.value)}
+                  className={validationErrors.scheduledDate ? 'error' : ''}
+                  min={new Date().toISOString().split('T')[0]}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Scheduled Time:</label>
+                <input 
+                  type="time" 
+                  value={scheduledTime} 
+                  onChange={e => setScheduledTime(e.target.value)}
+                  className={validationErrors.scheduledTime ? 'error' : ''}
+                  required 
+                />
+              </div>
+
+              <div id="map" ref={mapRef} className="map" />
+
+              <button 
+                onClick={() => {
+                  if (checkValidationPage1()) {
+                    setPage(2);
+                  }
+                }} 
+                className="button"
+              >
+                Next
+              </button>
             </div>
           )}
 
-          <div className="form-group">
-            <label>Additional Information (Optional):</label>
-            <textarea
-              value={additionalInfo}
-              onChange={e => setAdditionalInfo(e.target.value)}
-              placeholder="e.g., Special instructions, fragile items, or any other details we should know"
-              className="additional-info-input"
-            />
-          </div>
+          {page === 2 && (
+            <div className="content-wrapper">
+              <h1 className="title">Item Info</h1>
+              <p className="subtitle">Would you like to upload photos or manually enter your items?</p>
+              <p className="manual-entry-note">(manually entered items will get an immediate quote)</p>
+              
+              <div className="button-group">
+                <button 
+                  onClick={() => { setUsePhotos(true); }} 
+                  className={`button ${usePhotos ? 'active' : ''}`}
+                >
+                  Upload Photos
+                </button>
+                <button 
+                  onClick={() => { setUsePhotos(false); }} 
+                  className={`button ${!usePhotos ? 'active' : ''}`}
+                >
+                  Enter Items
+                </button>
+              </div>
 
-          <button 
-            onClick={() => {
-              if (checkValidationPage2()) {
-                setPage(3);
-              }
-            }}
-            className="button"
-          >
-            Finish
-          </button>
-        </div>
-      )}
+              {usePhotos ? (
+                <div className="photo-upload-section">
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    onChange={handlePhotoUpload}
+                    className="file-input"
+                  />
+                  <div className="photo-grid">
+                    {uploadedPhotos.map((photo, index) => (
+                      <div key={index} className="photo-item">
+                        <img 
+                          src={URL.createObjectURL(photo)} 
+                          alt="upload" 
+                        />
+                        <button 
+                          onClick={() => removePhoto(index)}
+                          className="remove-photo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="items-section">
+                  <ItemSelector onItemAdd={(item) => {
+                    setItems(prev => [...prev, {
+                      item_name: item.name,
+                      length: item.dimensions.length,
+                      width: item.dimensions.width,
+                      height: item.dimensions.height,
+                      weight: item.dimensions.weight,
+                      quantity: 1
+                    }]);
+                  }} />
+                  
+                  {items.length > 0 && (
+                    <div className="items-list">
+                      {items.map((item, index) => (
+                        <div key={index} className="item-entry">
+                          <div className="item-details">
+                            <span className="item-name">{item.item_name}</span>
+                            <div className="quantity-controls">
+                              <button 
+                                onClick={() => {
+                                  const newItems = [...items];
+                                  if (newItems[index].quantity > 1) {
+                                    newItems[index].quantity -= 1;
+                                    setItems(newItems);
+                                  }
+                                }}
+                                className="quantity-button"
+                              >
+                                -
+                              </button>
+                              <span className="quantity">{item.quantity}</span>
+                              <button 
+                                onClick={() => {
+                                  const newItems = [...items];
+                                  newItems[index].quantity += 1;
+                                  setItems(newItems);
+                                }}
+                                className="quantity-button"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const newItems = items.filter((_, i) => i !== index);
+                              setItems(newItems);
+                            }}
+                            className="remove-item-button"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-      {page === 3 && !isConfirmed && (
-        <div className="content-wrapper centered">
-            <div>
-            <h2 className="title">Review Your Submission</h2>
-            <div className="submission-details">
-              <h3>Your Move Details</h3>
-              <div className="details-grid">
-                <div className="detail-item">
-                  <span className="detail-label">Name:</span>
-                  <span className="detail-value">{name}</span>
+              <div className="form-group">
+                <label>Additional Information (Optional):</label>
+                <textarea
+                  value={additionalInfo}
+                  onChange={e => setAdditionalInfo(e.target.value)}
+                  placeholder="e.g., Special instructions, fragile items, or any other details we should know"
+                  className="additional-info-input"
+                />
+              </div>
+
+              <button 
+                onClick={() => {
+                  if (checkValidationPage2()) {
+                    setPage(3);
+                  }
+                }}
+                className="button"
+              >
+                Finish
+              </button>
+            </div>
+          )}
+
+          {page === 3 && !isConfirmed && (
+            <div className="content-wrapper centered">
+                <div>
+                <h2 className="title">Review Your Submission</h2>
+                <div className="submission-details">
+                  <h3>Your Move Details</h3>
+                  <div className="details-grid">
+                    <div className="detail-item">
+                      <span className="detail-label">Name:</span>
+                      <span className="detail-value">{name}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Email:</span>
+                      <span className="detail-value">{email}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Phone:</span>
+                      <span className="detail-value">{phone}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Move Type:</span>
+                      <span className="detail-value">{moveType}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Pickup Address:</span>
+                      <span className="detail-value">{pickupAddress}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Destination Address:</span>
+                      <span className="detail-value">{destinationAddress}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Scheduled Date:</span>
+                      <span className="detail-value">{formatDate(scheduledDate)}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Scheduled Time:</span>
+                      <span className="detail-value">{formatTime(scheduledTime)}</span>
+                    </div>
+                    {additionalInfo && (
+                      <div className="detail-item">
+                        <span className="detail-label">Additional Information:</span>
+                        <span className="detail-value">{additionalInfo}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <span className="detail-label">Email:</span>
-                  <span className="detail-value">{email}</span>
+
+                <div className="payment-notice">
+                  <p>Please note: Payment will be collected in person at the time of service.</p>
                 </div>
-                <div className="detail-item">
-                  <span className="detail-label">Phone:</span>
-                  <span className="detail-value">{phone}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Move Type:</span>
-                  <span className="detail-value">{moveType}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Pickup Address:</span>
-                  <span className="detail-value">{pickupAddress}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Destination Address:</span>
-                  <span className="detail-value">{destinationAddress}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Scheduled Date:</span>
-                  <span className="detail-value">{formatDate(scheduledDate)}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Scheduled Time:</span>
-                  <span className="detail-value">{formatTime(scheduledTime)}</span>
-                </div>
-                {additionalInfo && (
-                  <div className="detail-item">
-                    <span className="detail-label">Additional Information:</span>
-                    <span className="detail-value">{additionalInfo}</span>
+
+                <button 
+                  className="confirm-button"
+                  onClick={() => {
+                    setIsConfirmed(true);
+                    submitForm();
+                  }}
+                >
+                  Confirm Submission
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isConfirmed && (
+            <div className="final-page">
+              <div className="confirmation-message">
+                <h3>Thank you for your submission!</h3>
+                <p>We'll send you an email shortly to confirm your move details and price.</p>
+                {response?.type === "manual" && response?.data?.price && (
+                  <div className="price-display">
+                    <span className="price-label">Estimated Price:</span>
+                    <span className="price-amount">${response.data.price.toFixed(2)}</span>
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="payment-notice">
-              <p>Please note: Payment will be collected in person at the time of service.</p>
-            </div>
-
-            <button 
-              className="confirm-button"
-              onClick={() => {
-                setIsConfirmed(true);
-                submitForm();
-              }}
-            >
-              Confirm Submission
-            </button>
-          </div>
+          )}
         </div>
-      )}
-
-      {isConfirmed && (
-        <div className="final-page">
-          <div className="confirmation-message">
-            <h3>Thank you for your submission!</h3>
-            <p>We'll send you an email shortly to confirm your move details and price.</p>
-            {response?.type === "manual" && response?.data?.price && (
-              <div className="price-display">
-                <span className="price-label">Estimated Price:</span>
-                <span className="price-amount">${response.data.price.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
