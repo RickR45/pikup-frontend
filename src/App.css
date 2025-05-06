@@ -3,10 +3,12 @@ html, body {
   padding: 0;
   min-height: 100vh;
   background-color: #111;
+  overflow-x: hidden;
+  width: 100vw;
 }
 
 .app-container {
-  width: 100%;
+  width: 100vw;
   margin: 0;
   padding: 0;
   display: flex;
@@ -17,16 +19,19 @@ html, body {
   color: white;
   font-family: Arial, sans-serif;
   position: relative;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .hero-section {
-  width: 100%;
+  width: 100vw;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   box-sizing: border-box;
+  justify-content: center;
 }
 
 .hero-content {
@@ -66,6 +71,8 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .content-wrapper {
@@ -542,20 +549,29 @@ html, body {
 }
 
 @media (max-width: 768px) {
-  .app-container {
-    padding: 0;
+  html, body {
+    overflow-x: hidden;
+    width: 100vw;
   }
-  
+  .app-container, .hero-section {
+    width: 100vw;
+    align-items: center;
+    justify-content: center;
+  }
+  .main-content-bg {
+    max-width: 98vw;
+    width: 98vw;
+    margin-left: auto;
+    margin-right: auto;
+  }
   .content-wrapper {
     padding: 15px;
   }
-  
   .form-group input,
   .form-group select {
     font-size: 14px;
     padding: 10px;
   }
-  
   .details-grid {
     grid-template-columns: 1fr;
   }
