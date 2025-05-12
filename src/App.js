@@ -20,6 +20,7 @@ function App() {
   const [usePhotos, setUsePhotos] = useState(false);
   const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const [additionalInfo, setAdditionalInfo] = useState("");
+  const [hasStairs, setHasStairs] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [scheduledDate, setScheduledDate] = useState(() => {
     const today = new Date();
@@ -38,7 +39,7 @@ function App() {
   const pickupAutocompleteRef = useRef(null);
 
   const itemTypes = [
-    "Couch", "Bed", "Dresser", "Table", "Chair", "TV", "Bookshelf", "Desk",
+    "Sofa", "Bed", "Dresser", "Table", "Chair", "TV", "Bookshelf", "Desk",
     "Lamp", "Mattress", "Rug", "Washer", "Dryer", "Refrigerator", "Oven",
     "Microwave", "Cabinet", "Mirror", "Nightstand", "Storage Bin", "Box"
   ];
@@ -281,6 +282,7 @@ function App() {
       scheduled_time: scheduledTime,
       mileage_override: distOverride,
       use_photos: usePhotos,
+      has_stairs: hasStairs,
       additional_info: additionalInfo,
       items: usePhotos ? [] : expandedItems
     };
@@ -610,6 +612,16 @@ function App() {
 
               <div className="form-group">
                 <label>Additional Information (Optional):</label>
+                <div className="checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="hasStairs"
+                    checked={hasStairs}
+                    onChange={(e) => setHasStairs(e.target.checked)}
+                    className="stairs-checkbox"
+                  />
+                  <label htmlFor="hasStairs">Stairs at pickup or delivery location</label>
+                </div>
                 <textarea
                   value={additionalInfo}
                   onChange={e => setAdditionalInfo(e.target.value)}

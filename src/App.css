@@ -848,3 +848,23 @@ input[type="time"]:focus {
 .remove-item-button:hover {
   transform: scale(1.2);
 }
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+
+.stairs-checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+}
+
+.checkbox-group label {
+  margin: 0;
+  cursor: pointer;
+  font-size: 1rem;
+  color: white;
+}
