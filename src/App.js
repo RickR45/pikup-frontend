@@ -327,7 +327,7 @@ function App() {
         <div className="hero-content">
           <h1 className="title">PikUp</h1>
           <p className="subtitle">
-            The easiest way to move your stuff.<br />
+            The easiest way to move your items.<br />
             <span className="subtitle-row">Affordable <span>Reliable</span> <span>Fast</span></span>
           </p>
         </div>
