@@ -310,7 +310,7 @@ function App() {
     }
   };
 
-  const showPickup = moveType === "Home to Home" || moveType === "Store Pickup" || moveType === "Home to Storage Unit";
+  const showPickup = moveType === "Home to Home" || moveType === "Party/Venue" || moveType === "Store Pickup" || moveType === "Home to Storage Unit";
   const labelPickup = moveType === "Store Pickup" ? "Store Address" : "Pickup Address";
   const labelDropoff = moveType === "Home to Storage Unit" ? "Storage Unit Location" : (moveType === "In-House Move" || moveType === "Junk Removal" ? "Address" : "Dropoff Address");
 
@@ -435,6 +435,7 @@ function App() {
                 >
                   <option value="Select">Select</option>
                   <option>Home to Home</option>
+                  <option>Party/Venue</option>
                   <option>Home to Storage Unit</option>
                   <option>In-House Move</option>
                   <option>Store Pickup</option>
