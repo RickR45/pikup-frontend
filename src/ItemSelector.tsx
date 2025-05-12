@@ -9,9 +9,13 @@ interface ItemSelectorProps {
 const ItemSelector: React.FC<ItemSelectorProps> = ({ onItemAdd }) => {
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | null>(null);
   const [selectedItem, setSelectedItem] = useState<ItemVariant | null>(null);
+  const [selectedSubItem, setSelectedSubItem] = useState<ItemVariant | null>(null);
 
   const handleAddItem = () => {
-    if (selectedItem) {
+    if (selectedSubItem) {
+      onItemAdd(selectedSubItem, selectedSubItem.dimensions);
+      setSelectedSubItem(null);
+    } else if (selectedItem) {
       onItemAdd(selectedItem, selectedItem.dimensions);
       setSelectedItem(null);
     }
@@ -43,7 +47,10 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({ onItemAdd }) => {
                 <button
                   key={item.name}
                   className={`item-selector-button ${selectedItem?.name === item.name ? 'selected' : ''}`}
-                  onClick={() => setSelectedItem(item)}
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setSelectedSubItem(null);
+                  }}
                 >
                   {item.name}
                 </button>
@@ -59,11 +66,8 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({ onItemAdd }) => {
               {selectedItem.subItems.map((subItem) => (
                 <button
                   key={subItem.name}
-                  className="item-selector-button selected"
-                  onClick={() => {
-                    onItemAdd(subItem, subItem.dimensions);
-                    setSelectedItem(null);
-                  }}
+                  className={`item-selector-button ${selectedSubItem?.name === subItem.name ? 'selected' : ''}`}
+                  onClick={() => setSelectedSubItem(subItem)}
                 >
                   {subItem.name}
                 </button>
@@ -72,17 +76,69 @@ const ItemSelector: React.FC<ItemSelectorProps> = ({ onItemAdd }) => {
           </div>
         )}
 
-        {selectedItem && !selectedItem.subItems && (
+        {(selectedItem || selectedSubItem) && (
           <button
-            className="item-selector-add-button"
             onClick={handleAddItem}
+            className="add-item-button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              padding: '1rem 2rem',
+              borderRadius: '12px',
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              marginTop: '1.5rem',
+              width: '100%',
+              minHeight: '60px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+            }}
           >
-            Add Item
+            <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>+</span> Add Item
           </button>
         )}
       </div>
     </div>
   );
 };
+
+const styles = `
+  .add-item-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1.25rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1.5rem;
+    width: 100%;
+    min-height: 60px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .add-item-button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .plus-icon {
+    font-size: 2rem;
+    font-weight: bold;
+  }
+`;
 
 export default ItemSelector; 
