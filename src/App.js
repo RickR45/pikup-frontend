@@ -229,6 +229,12 @@ function App() {
       errors.scheduledTime = true;
     }
 
+    // Time validation: must be between 8 AM and 7 PM
+    const [hours, minutes] = scheduledTime.split(':').map(Number);
+    if (hours < 8 || hours >= 19) {
+      errors.scheduledTime = true;
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -414,7 +420,7 @@ function App() {
                 <input 
                   value={phone} 
                   onChange={e => setPhone(e.target.value)} 
-                  placeholder="(123) 456-7890" 
+                  placeholder="(914) 555-1234" 
                   className={validationErrors.phone ? 'error' : ''}
                   required 
                 />
@@ -483,8 +489,15 @@ function App() {
                   value={scheduledTime} 
                   onChange={e => setScheduledTime(e.target.value)}
                   className={validationErrors.scheduledTime ? 'error' : ''}
+                  min="08:00"
+                  max="19:00"
                   required 
                 />
+                {validationErrors.scheduledTime && (
+                  <div className="error-message">
+                    Please select a time between 8:00 AM and 7:00 PM
+                  </div>
+                )}
               </div>
 
               <div id="map" ref={mapRef} className="map" />
