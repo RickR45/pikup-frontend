@@ -268,6 +268,28 @@ const MoveForm: React.FC = () => {
               {errors.pickupAddress && <div className="error-message">{errors.pickupAddress}</div>}
             </div>
 
+            {formDataState.moveType !== "In-House Move" && (
+              <div className="address-switch-container">
+                <button
+                  type="button"
+                  className="address-switch-button"
+                  onClick={() => {
+                    const tempAddress = formDataState.pickupAddress;
+                    setFormDataState({
+                      ...formDataState,
+                      pickupAddress: formDataState.destinationAddress,
+                      destinationAddress: tempAddress
+                    });
+                  }}
+                  title="Switch addresses"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/>
+                  </svg>
+                </button>
+              </div>
+            )}
+
             <div className="form-group">
               <label htmlFor="destinationAddress">Destination Address</label>
               <input
@@ -564,8 +586,6 @@ const MoveForm: React.FC = () => {
       per_ft3: number;
       per_item: number;
       max_miles?: number;
-      max_volume: number;
-      max_dimension: number;
       per_weight?: number;
     }> = {
       "Home to Home": { 
@@ -573,44 +593,34 @@ const MoveForm: React.FC = () => {
         per_mile: 3, 
         per_ft3: 0.5, 
         per_item: 5,
-        max_miles: 80,
-        max_volume: 160,
-        max_dimension: 8 * 12
+        max_miles: 80
       },
       "In-House Move": { 
         base: 40, 
         per_mile: 0, 
         per_ft3: 0.5, 
-        per_item: 2.5,
-        max_volume: 160,
-        max_dimension: 8 * 12
+        per_item: 2.5
       },
       "Store Pickup": { 
         base: 100, 
         per_mile: 3, 
         per_ft3: 0.5, 
         per_item: 5,
-        max_miles: 80,
-        max_volume: 160,
-        max_dimension: 8 * 12
+        max_miles: 80
       },
       "Home to Storage": { 
         base: 100, 
         per_mile: 3, 
         per_ft3: 0.5, 
         per_item: 5,
-        max_miles: 80,
-        max_volume: 160,
-        max_dimension: 8 * 12
+        max_miles: 80
       },
       "Junk Removal": { 
         base: 100, 
         per_mile: 0, 
         per_ft3: 0, 
         per_item: 5,
-        per_weight: 0.1,
-        max_volume: 160,
-        max_dimension: 8 * 12
+        per_weight: 0.1
       }
     };
 
@@ -628,28 +638,15 @@ const MoveForm: React.FC = () => {
 
     if (formData.items && !formData.use_photos) {
       let total_ft3 = 0;
-      let isOversize = false;
 
-      // Calculate volume and check dimensions
+      // Calculate volume
       formData.items.forEach((item: any) => {
-        const dimensions = [item.length, item.width, item.height];
-        if (dimensions.some(d => d > config.max_dimension)) {
-          isOversize = true;
-        }
         total_ft3 += (item.length * item.width * item.height) / 1728;
       });
 
-      // If total volume exceeds max or any item is oversized, show alert
-      if (total_ft3 > config.max_volume || isOversize) {
-        alert(`Warning: Some items exceed our size limits. Please contact us directly for large moves.
-              \nMaximum volume: 160 cubic feet
-              \nMaximum dimension: 8 feet`);
-        return null;
-      }
-
       // Add volume cost
       if (config.per_ft3 > 0) {
-        price += config.per_ft3 * Math.min(total_ft3, config.max_volume);
+        price += config.per_ft3 * total_ft3;
       }
 
       // Add per-item cost
